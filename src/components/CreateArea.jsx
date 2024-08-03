@@ -2,7 +2,8 @@ import React, { useState } from "react";
 import AddIcon from "@mui/icons-material/Add";
 import { Fab, Zoom } from "@mui/material";
 import { toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css"; // Import the CSS for toast notifications
+import "react-toastify/dist/ReactToastify.css";
+import axios from "axios";
 
 function CreateArea({ onAdd }) {
   const [isExpanded, setExpanded] = useState(false);
@@ -10,45 +11,50 @@ function CreateArea({ onAdd }) {
     title: "",
     content: "",
   });
-  const [isLoading, setIsLoading] = useState(false); // Add loading state
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
-    setNote(prevNote => ({ ...prevNote, [name]: value }));
+    setNote((prevNote) => ({
+      ...prevNote,
+      [name]: value,
+    }));
   };
 
   const submitNote = async (event) => {
     event.preventDefault();
-
     if (!note.title || !note.content) {
       toast.error("Please fill in both title and content");
       return;
     }
 
-    setIsLoading(true); 
+    setIsLoading(true);
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("https://back123-250i.onrender.com/todo", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(note),
-      });
+      const response = await axios.post(
+        "https://back123-250i.onrender.com/todo",
+        note,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
-      if (!response.ok) {
+      if (!response.data) {
         throw new Error("Failed to create note");
       }
 
-      const newNote = await response.json(); // Get the created note from the response
-      onAdd(newNote); // Call the onAdd prop with the newNote data
-
-      setNote({ title: "", content: "" });
+      onAdd(response.data.todo); // Use the created note data
+      setNote({
+        title: "",
+        content: "",
+      });
       toast.success("Note created successfully!");
-    } catch (err) {
-      console.error("Error creating note:", err);
+    } catch (error) {
+      console.error("Error creating note:", error);
       toast.error("Error creating note. Please try again.");
     } finally {
       setIsLoading(false);
@@ -79,8 +85,8 @@ function CreateArea({ onAdd }) {
           rows={isExpanded ? 3 : 1}
         />
         <Zoom in={isExpanded}>
-          <Fab onClick={submitNote}>
-            <AddIcon />
+          <Fab onClick={submitNote} disabled={isLoading}>
+            {isLoading ? "Adding..." : <AddIcon />}
           </Fab>
         </Zoom>
       </form>
